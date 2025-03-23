@@ -7,9 +7,9 @@
 - [x] api/ap auth system
 - [x] substitution handling
 - [x] more ui customization
+- [x] details modals
 - [ ] updates on dashboard
 - [ ] push notifications
-- [ ] details menus
 
 ## features
 
