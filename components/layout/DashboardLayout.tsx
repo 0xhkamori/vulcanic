@@ -1,6 +1,7 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import BottomNavigation from './BottomNavigation';
 import { motion } from 'framer-motion';
+import GradeUpdates from '@/components/ui/GradeUpdates';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -86,6 +87,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) =>
         }}
       >
         <div className="max-w-screen-lg mx-auto px-4 py-4 w-full">
+          {/* Display grade update notifications */}
+          {!isNavigating && <GradeUpdates />}
           {!isNavigating && children}
         </div>
       </motion.main>

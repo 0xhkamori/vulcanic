@@ -9,53 +9,26 @@ import { motion } from 'framer-motion';
 import { Trophy, CaretDown, CaretUp, MagnifyingGlass } from '@phosphor-icons/react';
 import withAuth from '@/lib/utils/withAuth';
 import DetailModal from '@/components/ui/DetailModal';
-
-// Интерфейс для оценки
-interface Grade {
-  Value?: string | number;
-  Content?: string;
-  ContentRaw?: string;
-  Comment?: string;
-  Topic?: string;
-  Column?: {
-    Subject?: string | SubjectObject;
-    Name?: string;
-    Code?: string;
-    Weight?: number;
-    Category?: {
-      Id?: number;
-      Name?: string;
-      Code?: string;
-    };
-  };
-  Subject?: string | SubjectObject;
-}
-
-// Интерфейс для объекта предмета
-interface SubjectObject {
-  Id?: number | string;
-  Key?: string;
-  Name?: string;
-  Kod?: string;
-  Position?: number | string;
-  [key: string]: any; // Для других возможных свойств
-}
-
-// Интерфейс для предмета с оценками
-interface SubjectWithGrades {
-  name: string;
-  grades: Grade[];
-  average: number;
-}
+import { useGradeUpdates } from '@/lib/hooks/useGradeUpdates';
+import { SubjectObject, Grade, SubjectWithGrades } from '@/types/grades';
 
 function Grades() {
   const { data: grades, isLoading, error } = useVulcanData('grades');
+  const { newGrades } = useGradeUpdates(grades || []);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortCriteria, setSortCriteria] = useState<'name' | 'average'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedSubject, setSelectedSubject] = useState<SubjectWithGrades | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Debug log any new grades detected
+  useEffect(() => {
+    if (newGrades.length > 0) {
+      console.log(`[VULCANIC_UI] Detected ${newGrades.length} new grades in Grades component`);
+    }
+  }, [newGrades]);
+
+  // Debug logs for grades structure
   useEffect(() => {
     if (grades) {
       console.log('Полученные оценки:', grades);
@@ -124,7 +97,6 @@ function Grades() {
       }
     });
     
-    console.log('Результат группировки:', Array.from(subjectsMap.values()));
     return Array.from(subjectsMap.values());
   }, [grades]);
 

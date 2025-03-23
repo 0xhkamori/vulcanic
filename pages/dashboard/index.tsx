@@ -12,13 +12,15 @@ import {
   Envelope,
   BookOpen,
   Building,
-  Warning
+  Warning,
+  Bug
 } from '@phosphor-icons/react';
 import Link from 'next/link';
 import Loading from '@/components/ui/Loading';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
 import withAuth from '@/lib/utils/withAuth';
 import { getUserData } from '@/lib/utils/auth-utils';
+import GradeUpdates from '@/components/ui/GradeUpdates';
 
 function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,6 +28,43 @@ function Dashboard() {
   const { data: substitutions, isLoading: substitutionsLoading, error: substitutionsError } = useCurrentDayData('substitutions');
   const [todaysLessons, setTodaysLessons] = useState<any[]>([]);
   const [greeting, setGreeting] = useState('Good day');
+  const [storageStatus, setStorageStatus] = useState<{available: boolean, error?: string}>({ available: false });
+
+  // Check localStorage availability
+  useEffect(() => {
+    try {
+      localStorage.setItem('storage_test', 'test');
+      localStorage.removeItem('storage_test');
+      setStorageStatus({ available: true });
+      
+      // Log all Vulcanic localStorage items
+      const vulcanicItems: Record<string, string> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('vulcanic_')) {
+          vulcanicItems[key] = localStorage.getItem(key) || '';
+        }
+      }
+      
+      console.warn('[VULCANIC] localStorage items:', Object.keys(vulcanicItems));
+      
+      // Estimate used storage
+      try {
+        const allStorageData = JSON.stringify(localStorage);
+        const usedKB = Math.round(allStorageData.length / 1024);
+        console.warn(`[VULCANIC] Estimated storage usage: ~${usedKB}KB`);
+      } catch (e) {
+        console.warn('[VULCANIC] Could not estimate storage usage');
+      }
+      
+    } catch (e) {
+      console.error('[VULCANIC] localStorage error:', e);
+      setStorageStatus({ 
+        available: false,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      });
+    }
+  }, []);
 
   const isLoading = lessonsLoading || substitutionsLoading;
   const error = lessonsError || substitutionsError;
