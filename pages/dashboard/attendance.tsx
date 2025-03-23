@@ -11,9 +11,15 @@ import {
   XCircle, 
   Clock, 
   ChartPie, 
-  Calendar
+  Calendar,
+  Check,
+  X,
+  Warning,
+  MinusCircle,
+  MagnifyingGlass
 } from '@phosphor-icons/react';
 import withAuth from '@/lib/utils/withAuth';
+import DetailModal from '@/components/ui/DetailModal';
 
 function Attendance() {
   // Remove monthly navigation and store only today's date
@@ -268,6 +274,19 @@ function Attendance() {
     }
   };
   
+  const [selectedAttendance, setSelectedAttendance] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Handle attendance card click
+  const handleAttendanceClick = (record: any) => {
+    setSelectedAttendance(record);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <DashboardLayout title="Attendance">
       {isLoading ? (
@@ -394,7 +413,10 @@ function Attendance() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <Card className="p-4">
+                          <Card 
+                            className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => handleAttendanceClick(record)}
+                          >
                             <div className="flex items-center gap-3">
                               <div className="flex-shrink-0">
                                 {getAttendanceIcon(presenceTypeId)}
@@ -441,6 +463,93 @@ function Attendance() {
             )}
           </div>
         </>
+      )}
+      
+      {/* Attendance Detail Modal */}
+      {selectedAttendance && (
+        <DetailModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          title="Attendance Details"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex-shrink-0">
+                {getAttendanceIcon(getPresenceTypeId(selectedAttendance))}
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">
+                  {selectedAttendance.Subject?.Name || 
+                   typeof selectedAttendance.Subject === 'string' ? selectedAttendance.Subject : 
+                   selectedAttendance.Lesson?.Subject?.Name || 'Lesson'}
+                </h3>
+                <p className={`${formatAttendance(selectedAttendance).color} font-medium`}>
+                  {formatAttendance(selectedAttendance).status}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-surface p-4 rounded-lg">
+              <h4 className="font-medium text-primary mb-2">Attendance Information</h4>
+              <div className="space-y-2 text-text-secondary">
+                <p className="flex justify-between">
+                  <span className="font-medium">Date:</span>
+                  <span>
+                    {selectedAttendance.Date || 
+                     (selectedAttendance.DateFrom ? 
+                      selectedAttendance.DateFrom.split('T')[0] : 'N/A')}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="font-medium">Time:</span>
+                  <span>
+                    {formatTime(selectedAttendance.TimeStart || 
+                                selectedAttendance.timeStart || 
+                                (selectedAttendance.TimeSlot?.TimeStart) || 
+                                (selectedAttendance.Lesson?.TimeStart))} - 
+                    {formatTime(selectedAttendance.TimeEnd || 
+                                selectedAttendance.timeEnd || 
+                                (selectedAttendance.TimeSlot?.TimeEnd) || 
+                                (selectedAttendance.Lesson?.TimeEnd))}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="font-medium">Teacher:</span>
+                  <span>
+                    {selectedAttendance.Teacher?.DisplayName || 
+                     typeof selectedAttendance.Teacher === 'string' ? selectedAttendance.Teacher : 
+                     selectedAttendance.Lesson?.Teacher?.DisplayName || 
+                     selectedAttendance.TeacherPrimary?.DisplayName || 'N/A'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {(selectedAttendance.Reason || selectedAttendance.reason) && (
+              <div className="bg-surface p-4 rounded-lg">
+                <h4 className="font-medium text-primary mb-2">Reason</h4>
+                <p className="text-text-secondary">
+                  {selectedAttendance.Reason || selectedAttendance.reason}
+                </p>
+              </div>
+            )}
+
+            {(selectedAttendance.Topic || selectedAttendance.Lesson?.Topic) && (
+              <div className="bg-surface p-4 rounded-lg">
+                <h4 className="font-medium text-primary mb-2">Lesson Topic</h4>
+                <p className="text-text-secondary">
+                  {selectedAttendance.Topic || selectedAttendance.Lesson?.Topic}
+                </p>
+              </div>
+            )}
+
+            {/* Show lesson ID if available */}
+            <div className="text-xs text-text-tertiary mt-2">
+              Lesson ID: {selectedAttendance.LessonId || 
+                          (selectedAttendance.Lesson?.Id) || 'N/A'}
+            </div>
+          </div>
+        </DetailModal>
       )}
     </DashboardLayout>
   );

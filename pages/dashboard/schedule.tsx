@@ -8,6 +8,7 @@ import { formatDate, getDayOfWeek, formatTime, parseDate, parseTime } from '@/li
 import { motion } from 'framer-motion';
 import { CaretLeft, CaretRight, Warning } from '@phosphor-icons/react';
 import withAuth from '@/lib/utils/withAuth';
+import DetailModal from '@/components/ui/DetailModal';
 
 function Schedule() {
   const { data: lessons, isLoading: lessonsLoading, error: lessonsError } = useCurrentWeekData('lessons');
@@ -15,6 +16,8 @@ function Schedule() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekDays, setWeekDays] = useState<Date[]>([]);
   const [dailyLessons, setDailyLessons] = useState<any[]>([]);
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const isLoading = lessonsLoading || substitutionsLoading;
   const error = lessonsError || substitutionsError;
@@ -268,6 +271,16 @@ function Schedule() {
   // Определение, является ли день выбранным
   const isSelected = (date: Date) => {
     return date.toDateString() === selectedDate.toDateString();
+  };
+
+  // Handle lesson click
+  const handleLessonClick = (lesson: any) => {
+    setSelectedLesson(lesson);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -524,7 +537,10 @@ function Schedule() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                    <Card className={`p-4 ${isSubstitution ? 'border-l-4 border-warning' : ''}`}>
+                    <Card 
+                      className={`p-4 ${isSubstitution ? 'border-l-4 border-warning' : ''} cursor-pointer`}
+                      onClick={() => handleLessonClick(lesson)}
+                    >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -580,6 +596,123 @@ function Schedule() {
             </div>
           )}
         </div>
+      )}
+      
+      {/* Lesson Detail Modal */}
+      {selectedLesson && (
+        <DetailModal 
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          title={selectedLesson.Subject?.Name || selectedLesson.Subject || "Lesson Details"}
+        >
+          <div className="space-y-4">
+            <div className="bg-surface p-4 rounded-lg">
+              <h4 className="font-medium text-primary mb-2">Schedule Information</h4>
+              <div className="space-y-2 text-text-secondary">
+                <p className="flex justify-between">
+                  <span className="font-medium">Time:</span>
+                  <span>
+                    {selectedLesson.TimeSlot?.Display || 
+                     (selectedLesson.TimeSlot?.Start && selectedLesson.TimeSlot?.End ? 
+                      `${selectedLesson.TimeSlot.Start} - ${selectedLesson.TimeSlot.End}` : 
+                      'N/A')}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="font-medium">Room:</span>
+                  <span>
+                    {typeof selectedLesson.Room === 'string' ? selectedLesson.Room : 
+                     selectedLesson.Room?.Name || selectedLesson.Room?.Code || 'N/A'}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="font-medium">Position:</span>
+                  <span>
+                    {selectedLesson.TimeSlot?.Position || selectedLesson.Position || 'N/A'}
+                  </span>
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-surface p-4 rounded-lg">
+              <h4 className="font-medium text-primary mb-2">Teacher Information</h4>
+              <div className="space-y-2 text-text-secondary">
+                <p className="flex justify-between">
+                  <span className="font-medium">Name:</span>
+                  <span>
+                    {typeof selectedLesson.Teacher === 'string' ? selectedLesson.Teacher : 
+                     selectedLesson.Teacher?.DisplayName || 
+                     selectedLesson.TeacherPrimary?.DisplayName || 'N/A'}
+                  </span>
+                </p>
+                {selectedLesson.Teacher?.Email && (
+                  <p className="flex justify-between">
+                    <span className="font-medium">Email:</span>
+                    <span>{selectedLesson.Teacher.Email}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {selectedLesson.Topic && (
+              <div className="bg-surface p-4 rounded-lg">
+                <h4 className="font-medium text-primary mb-2">Lesson Topic</h4>
+                <p className="text-text-secondary">
+                  {typeof selectedLesson.Topic === 'string' ? 
+                   selectedLesson.Topic : 
+                   JSON.stringify(selectedLesson.Topic)}
+                </p>
+              </div>
+            )}
+            
+            {selectedLesson.isSubstitution && (
+              <div className="bg-surface p-4 rounded-lg border-l-4 border-warning">
+                <h4 className="font-medium text-warning mb-2">Substitution Information</h4>
+                <div className="space-y-2 text-text-secondary">
+                  <p className="flex justify-between">
+                    <span className="font-medium">Reason:</span>
+                    <span>{selectedLesson.substitutionReason || 'N/A'}</span>
+                  </p>
+                  {selectedLesson.originalSubject && (
+                    <p className="flex justify-between">
+                      <span className="font-medium">Original Subject:</span>
+                      <span>
+                        {typeof selectedLesson.originalSubject === 'string' ? 
+                         selectedLesson.originalSubject : 
+                         selectedLesson.originalSubject.Name || 'Unknown'}
+                      </span>
+                    </p>
+                  )}
+                  {selectedLesson.originalTeacher && (
+                    <p className="flex justify-between">
+                      <span className="font-medium">Original Teacher:</span>
+                      <span>
+                        {typeof selectedLesson.originalTeacher === 'string' ? 
+                         selectedLesson.originalTeacher : 
+                         selectedLesson.originalTeacher.DisplayName || 'Unknown'}
+                      </span>
+                    </p>
+                  )}
+                  {selectedLesson.originalRoom && (
+                    <p className="flex justify-between">
+                      <span className="font-medium">Original Room:</span>
+                      <span>
+                        {typeof selectedLesson.originalRoom === 'string' ? 
+                         selectedLesson.originalRoom : 
+                         selectedLesson.originalRoom.Name || selectedLesson.originalRoom.Code || 'Unknown'}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Show additional data if available */}
+            <div className="text-xs text-text-tertiary mt-4">
+              <p>Lesson ID: {selectedLesson.Id || selectedLesson.ScheduleId || 'N/A'}</p>
+            </div>
+          </div>
+        </DetailModal>
       )}
     </DashboardLayout>
   );

@@ -15,6 +15,7 @@ import {
   CalendarCheck 
 } from '@phosphor-icons/react';
 import withAuth from '@/lib/utils/withAuth';
+import DetailModal from '@/components/ui/DetailModal';
 
 // Интерфейс для домашнего задания
 interface HomeworkItem {
@@ -25,6 +26,8 @@ interface HomeworkItem {
   Date?: any;
   Deadline?: any;
   Creator?: any;
+  AnswerDate?: any;
+  IsAnswerRequired?: boolean;
   isDone?: boolean;
   isTestData?: boolean; // Метка для тестовых данных
 }
@@ -33,6 +36,8 @@ function Homework() {
   const { data: homework, isLoading, error } = useCurrentWeekData('homework');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedTask, setSelectedTask] = useState<HomeworkItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Debug log for received data
   useEffect(() => {
@@ -67,8 +72,9 @@ function Homework() {
         }
       }
       
-      // Check if completed (may be missing in data)
-      const isDone = task.IsAnswerRequired === false || Boolean(task.AnswerDate);
+      // Check if completed - based on reference data structure
+      // A homework is considered completed only if it has an AnswerDate
+      const isDone = Boolean(task.AnswerDate);
       
       // Return processed task
       return {
@@ -168,8 +174,40 @@ function Homework() {
   // Определение статуса срочности задания
   const getStatusInfo = (deadline: any, date: any) => {
     const now = new Date();
-    const taskDate = parseDate(date);
-    const deadlineDate = parseDate(deadline);
+    
+    // Better deadline parsing for Vulcan API format
+    const getFormattedDate = (dateObj: any) => {
+      if (!dateObj) return null;
+      
+      // Handle Vulcan API format (with Date field)
+      if (typeof dateObj === 'object' && dateObj !== null) {
+        if (dateObj.Date) {
+          return dateObj.Date;
+        } else if (dateObj.DateDisplay) {
+          return dateObj.DateDisplay;
+        } else if (dateObj.Timestamp) {
+          return new Date(dateObj.Timestamp).toISOString().split('T')[0];
+        } else if (dateObj.Year && (dateObj.Month !== undefined) && dateObj.Day) {
+          const year = dateObj.Year;
+          const month = String(dateObj.Month).padStart(2, '0');
+          const day = String(dateObj.Day).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+      }
+      
+      // Handle string date
+      if (typeof dateObj === 'string') {
+        return dateObj;
+      }
+      
+      return null;
+    };
+    
+    const deadlineFormatted = getFormattedDate(deadline);
+    const dateFormatted = getFormattedDate(date);
+    
+    const deadlineDate = deadlineFormatted ? parseDate(deadlineFormatted) : null;
+    const taskDate = dateFormatted ? parseDate(dateFormatted) : null;
     
     const isOverdue = deadlineDate && deadlineDate < now;
     const isDueToday = deadlineDate && 
@@ -178,14 +216,40 @@ function Homework() {
       deadlineDate.getFullYear() === now.getFullYear();
     
     if (isOverdue) {
-      return { text: 'Overdue', icon: XCircle, iconClass: 'text-red-500' };
+      return { 
+        text: `Due: ${deadlineFormatted ? formatDate(deadlineFormatted) : 'Overdue'}`, 
+        icon: XCircle, 
+        iconClass: 'text-red-500' 
+      };
     } else if (isDueToday) {
-      return { text: 'Today', icon: Clock, iconClass: 'text-yellow-500' };
-    } else if (taskDate) {
-      return { text: formatDate(taskDate), icon: CalendarCheck, iconClass: 'text-green-500' };
+      return { 
+        text: 'Due Today', 
+        icon: Clock, 
+        iconClass: 'text-yellow-500' 
+      };
+    } else if (deadlineDate) {
+      return { 
+        text: `Due: ${formatDate(deadlineDate)}`, 
+        icon: CalendarCheck, 
+        iconClass: 'text-green-500' 
+      };
     } else {
-      return { text: 'Unknown', icon: Clock, iconClass: 'text-text-secondary' };
+      return { 
+        text: 'No deadline', 
+        icon: Clock, 
+        iconClass: 'text-text-secondary' 
+      };
     }
+  };
+
+  // Handle homework card click
+  const handleTaskClick = (task: HomeworkItem) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -232,11 +296,16 @@ function Homework() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <Card className={`p-4 ${task.isDone ? 'opacity-70' : ''}`}>
+                          <Card 
+                            className={`p-4 ${task.isDone ? 'opacity-70' : ''} cursor-pointer hover:shadow-md transition-shadow`}
+                            onClick={() => handleTaskClick(task)}
+                          >
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-1">
                                 {task.isDone ? (
                                   <CheckCircle size={20} weight="fill" className="text-green-500" />
+                                ) : task.IsAnswerRequired === false ? (
+                                  <Clock size={20} weight="fill" className="text-blue-500" />
                                 ) : (
                                   <XCircle size={20} weight="fill" className="text-red-500" />
                                 )}
@@ -265,7 +334,10 @@ function Homework() {
                                 
                                 {task.Content && task.Content.length > 100 && (
                                   <button
-                                    onClick={() => toggleExpand(task.Id || '')}
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent card click
+                                      toggleExpand(task.Id || '');
+                                    }}
                                     className="mt-2 flex items-center text-xs text-primary hover:text-primary-dark"
                                   >
                                     {isExpanded ? 'Collapse' : 'Expand'}
@@ -292,6 +364,98 @@ function Homework() {
               </Card>
             )}
           </div>
+
+          {/* Task Detail Modal */}
+          {selectedTask && (
+            <DetailModal
+              isOpen={isModalOpen}
+              onClose={closeModal}
+              title={selectedTask.Subject || "Homework Details"}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-shrink-0">
+                    {selectedTask.isDone ? (
+                      <CheckCircle size={24} weight="fill" className="text-green-500" />
+                    ) : selectedTask.IsAnswerRequired === false ? (
+                      <Clock size={24} weight="fill" className="text-blue-500" />
+                    ) : (
+                      <XCircle size={24} weight="fill" className="text-red-500" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">
+                      {selectedTask.Subject || "Homework Task"}
+                    </h3>
+                    <p className="text-text-secondary">
+                      {selectedTask.isDone ? 'Completed' : 
+                       selectedTask.IsAnswerRequired === false ? 'No answer required' : 'Not completed'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-surface p-4 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">Deadline Information</h4>
+                  <div className="space-y-2 text-text-secondary">
+                    {selectedTask.Date && (
+                      <p className="flex justify-between">
+                        <span className="font-medium">Date Assigned:</span>
+                        <span>
+                          {typeof selectedTask.Date === 'string' ? selectedTask.Date :
+                           selectedTask.Date.DateDisplay ? selectedTask.Date.DateDisplay :
+                           selectedTask.Date.Date ? selectedTask.Date.Date :
+                           formatDate(selectedTask.Date)}
+                        </span>
+                      </p>
+                    )}
+                    {selectedTask.Deadline && (
+                      <p className="flex justify-between">
+                        <span className="font-medium">Deadline:</span>
+                        <span>
+                          {typeof selectedTask.Deadline === 'string' ? selectedTask.Deadline :
+                           selectedTask.Deadline.DateDisplay ? selectedTask.Deadline.DateDisplay :
+                           selectedTask.Deadline.Date ? selectedTask.Deadline.Date :
+                           formatDate(selectedTask.Deadline)}
+                        </span>
+                      </p>
+                    )}
+                    {selectedTask.Creator && (
+                      <p className="flex justify-between">
+                        <span className="font-medium">Assigned By:</span>
+                        <span>
+                          {typeof selectedTask.Creator === 'string' 
+                            ? selectedTask.Creator 
+                            : selectedTask.Creator.DisplayName || JSON.stringify(selectedTask.Creator)}
+                        </span>
+                      </p>
+                    )}
+                    <p className="flex justify-between">
+                      <span className="font-medium">Status:</span>
+                      <span className={selectedTask.isDone ? 'text-green-500' : 'text-red-500'}>
+                        {selectedTask.isDone ? 'Completed' : 
+                         selectedTask.IsAnswerRequired === false ? 'No answer required' : 'Not completed'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-surface p-4 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">Task Description</h4>
+                  <div 
+                    className="text-text-secondary prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: selectedTask.Content || 'No description available.' }}
+                  />
+                </div>
+
+                {/* Show additional information if available */}
+                {selectedTask.Id && (
+                  <div className="text-xs text-text-tertiary mt-2">
+                    <p>Task ID: {selectedTask.Id || 'N/A'}</p>
+                  </div>
+                )}
+              </div>
+            </DetailModal>
+          )}
         </>
       )}
     </DashboardLayout>

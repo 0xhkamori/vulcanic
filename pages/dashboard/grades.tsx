@@ -8,6 +8,7 @@ import { formatGrade, getGradeColor } from '@/lib/utils/formatters';
 import { motion } from 'framer-motion';
 import { Trophy, CaretDown, CaretUp, MagnifyingGlass } from '@phosphor-icons/react';
 import withAuth from '@/lib/utils/withAuth';
+import DetailModal from '@/components/ui/DetailModal';
 
 // Интерфейс для оценки
 interface Grade {
@@ -18,6 +19,14 @@ interface Grade {
   Topic?: string;
   Column?: {
     Subject?: string | SubjectObject;
+    Name?: string;
+    Code?: string;
+    Weight?: number;
+    Category?: {
+      Id?: number;
+      Name?: string;
+      Code?: string;
+    };
   };
   Subject?: string | SubjectObject;
 }
@@ -44,6 +53,8 @@ function Grades() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortCriteria, setSortCriteria] = useState<'name' | 'average'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedSubject, setSelectedSubject] = useState<SubjectWithGrades | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (grades) {
@@ -166,6 +177,16 @@ function Grades() {
     return +(sum / subjectsWithAverage.length).toFixed(2);
   }, [subjectGrades]);
 
+  // Handle subject card click
+  const handleSubjectClick = (subject: SubjectWithGrades) => {
+    setSelectedSubject(subject);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <DashboardLayout title="Grades">
       {isLoading ? (
@@ -246,7 +267,10 @@ function Grades() {
                     transition={{ duration: 0.3 }}
                     className="mb-2"
                   >
-                    <Card className="p-5 shadow-md hover:shadow-lg transition-shadow duration-200">
+                    <Card 
+                      className="p-5 shadow-md hover:shadow-lg transition-shadow duration-200 cursor-pointer" 
+                      onClick={() => handleSubjectClick(subject)}
+                    >
                       <div className="flex justify-between items-center mb-4 pb-3 border-b border-overlay">
                         <h3 className="font-medium text-lg">{
                           // Ensure subject name is always a string
@@ -263,13 +287,47 @@ function Grades() {
                       
                       <div className="flex flex-wrap gap-3 pt-1">
                         {subject.grades.map((grade: Grade, gradeIndex: number) => {
-                          // Убедимся, что у нас есть корректное значение для подсказки
-                          const tooltipContent = 
-                            typeof grade.Topic === 'string' ? grade.Topic : 
-                            typeof grade.Topic === 'object' && grade.Topic !== null ? JSON.stringify(grade.Topic) :
-                            typeof grade.Comment === 'string' ? grade.Comment :
-                            typeof grade.Comment === 'object' && grade.Comment !== null ? JSON.stringify(grade.Comment) :
-                            '';
+                          // Format topic for display - use Column.Name as the primary source
+                          const topicContent = (() => {
+                            // Primary source: Column.Name (as shown in the reference data)
+                            if (grade.Column && grade.Column.Name) {
+                              return typeof grade.Column.Name === 'string' ? grade.Column.Name : 
+                                    typeof grade.Column.Name === 'object' && grade.Column.Name !== null ? 
+                                    JSON.stringify(grade.Column.Name) : '';
+                            }
+                            
+                            // Fallback: Topic field
+                            if (grade.Topic) {
+                              return typeof grade.Topic === 'string' ? grade.Topic : 
+                                    typeof grade.Topic === 'object' && grade.Topic !== null ? 
+                                    JSON.stringify(grade.Topic) : '';
+                            }
+                            
+                            // Further fallbacks if needed
+                            return 'No topic';
+                          })();
+                          
+                          // Format comment for display
+                          const commentContent = (() => {
+                            if (grade.Comment) {
+                              return typeof grade.Comment === 'string' ? grade.Comment :
+                                    typeof grade.Comment === 'object' && grade.Comment !== null ?
+                                    JSON.stringify(grade.Comment) : '';
+                            }
+                            return '';
+                          })();
+
+                          // Get weight if available
+                          const weight = grade.Column?.Weight !== undefined ? grade.Column.Weight : '';
+                          
+                          // Create a rich tooltip with all available information
+                          const tooltipContent = [
+                            topicContent && `Topic: ${topicContent}`,
+                            commentContent && `Comment: ${commentContent}`,
+                            weight && `Weight: ${weight}`,
+                            grade.Column?.Category?.Name && `Category: ${grade.Column.Category.Name}`,
+                            grade.Column?.Code && `Code: ${grade.Column.Code}`
+                          ].filter(Boolean).join('\n');
                           
                           return (
                             <div 
@@ -294,6 +352,120 @@ function Grades() {
               </Card>
             )}
           </div>
+
+          {/* Subject Detail Modal */}
+          {selectedSubject && (
+            <DetailModal 
+              isOpen={isModalOpen}
+              onClose={closeModal}
+              title={
+                typeof selectedSubject.name === 'string' 
+                  ? selectedSubject.name 
+                  : (typeof selectedSubject.name === 'object' && selectedSubject.name !== null)
+                    ? JSON.stringify(selectedSubject.name)
+                    : 'Subject Details'
+              }
+            >
+              <div className="space-y-4">
+                <div className="bg-surface p-4 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">Performance Summary</h4>
+                  <div className="space-y-2 text-text-secondary">
+                    <p className="flex justify-between">
+                      <span className="font-medium">Average Grade:</span>
+                      <span className={`font-bold ${getGradeColor(selectedSubject.average)}`}>
+                        {selectedSubject.average || 'N/A'}
+                      </span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="font-medium">Total Grades:</span>
+                      <span>{selectedSubject.grades.length}</span>
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-surface p-4 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">All Grades</h4>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-sm text-text-secondary border-b border-overlay">
+                        <th className="text-left pb-2 font-medium">Grade</th>
+                        <th className="text-left pb-2 font-medium">Topic</th>
+                        <th className="text-left pb-2 font-medium">Comment</th>
+                        <th className="text-left pb-2 font-medium">Weight</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSubject.grades.map((grade: Grade, index: number) => {
+                        // Format topic for display - use Column.Name as the primary source
+                        const topicContent = (() => {
+                          // Primary source: Column.Name (as shown in the reference data)
+                          if (grade.Column && grade.Column.Name) {
+                            return typeof grade.Column.Name === 'string' ? grade.Column.Name : 
+                                  typeof grade.Column.Name === 'object' && grade.Column.Name !== null ? 
+                                  JSON.stringify(grade.Column.Name) : '';
+                          }
+                          
+                          // Fallback: Topic field
+                          if (grade.Topic) {
+                            return typeof grade.Topic === 'string' ? grade.Topic : 
+                                  typeof grade.Topic === 'object' && grade.Topic !== null ? 
+                                  JSON.stringify(grade.Topic) : '';
+                          }
+                          
+                          // Further fallbacks if needed
+                          return 'No topic';
+                        })();
+                        
+                        // Format comment for display
+                        const commentContent = (() => {
+                          if (grade.Comment) {
+                            return typeof grade.Comment === 'string' ? grade.Comment :
+                                  typeof grade.Comment === 'object' && grade.Comment !== null ?
+                                  JSON.stringify(grade.Comment) : '';
+                          }
+                          return '';
+                        })();
+
+                        // Get weight if available
+                        const weight = grade.Column?.Weight !== undefined ? grade.Column.Weight : '';
+                        
+                        // Create a rich tooltip with all available information
+                        const tooltipContent = [
+                          topicContent && `Topic: ${topicContent}`,
+                          commentContent && `Comment: ${commentContent}`,
+                          weight && `Weight: ${weight}`,
+                          grade.Column?.Category?.Name && `Category: ${grade.Column.Category.Name}`,
+                          grade.Column?.Code && `Code: ${grade.Column.Code}`
+                        ].filter(Boolean).join('\n');
+                        
+                        return (
+                          <tr key={index} className="border-b border-overlay/50 hover:bg-overlay/20" title={tooltipContent}>
+                            <td className={`py-2 ${getGradeColor(grade.Value || '')}`}>
+                              {formatGrade(grade)}
+                            </td>
+                            <td className="py-2 text-text-secondary text-sm">
+                              {topicContent}
+                              {grade.Column?.Category?.Name && (
+                                <span className="ml-1 text-xs text-text-tertiary">
+                                  ({grade.Column.Category.Name})
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 text-text-secondary text-sm">
+                              {commentContent}
+                            </td>
+                            <td className="py-2 text-text-secondary text-sm text-center">
+                              {weight || '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </DetailModal>
+          )}
         </>
       )}
     </DashboardLayout>
