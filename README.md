@@ -8,7 +8,7 @@
 - [x] substitution handling
 - [x] more ui customization
 - [x] details modals
-- [ ] updates on dashboard
+- [x] updates on dashboard
 - [ ] push notifications
 
 ## features
