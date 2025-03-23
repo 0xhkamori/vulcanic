@@ -9,7 +9,7 @@
 - [x] more ui customization
 - [x] details modals
 - [x] updates on dashboard
-- [ ] push notifications
+- [ ] exams handling
 
 ## features
 
