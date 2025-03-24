@@ -400,9 +400,7 @@ function Dashboard() {
               </div>
               
               <div className="flex-1">
-                <Link href="/dashboard/profile">
-                  <h2 className="text-lg font-bold">{userInfo.name}</h2>
-                </Link>
+                <h2 className="text-lg font-bold">{userInfo.name}</h2>
                 <div className="text-text-secondary text-xs space-y-1">
                   <div className="flex items-center">
                     <BookOpen size={12} className="mr-1" />

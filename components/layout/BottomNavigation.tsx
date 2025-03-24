@@ -10,7 +10,8 @@ import {
   User,
   Warning,
   CaretLeft,
-  CaretRight
+  CaretRight,
+  ClipboardText
 } from '@phosphor-icons/react';
 import axios from 'axios';
 
@@ -20,6 +21,7 @@ const navItems = [
   { name: 'Grades', href: '/dashboard/grades', icon: GraduationCap },
   { name: 'Homework', href: '/dashboard/homework', icon: Notepad },
   { name: 'Attendance', href: '/dashboard/attendance', icon: ClockCounterClockwise },
+  { name: 'Exams', href: '/dashboard/exams', icon: ClipboardText },
   { name: 'Profile', href: '/dashboard/profile', icon: User }
   // Add more items as needed - the navbar now supports scrolling
 ];
