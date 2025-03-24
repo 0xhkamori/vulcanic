@@ -37,16 +37,15 @@ body {
 }
 
 .nav-item {
-  @apply flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200;
+  @apply transition-all duration-200;
+  position: relative;
 }
 
 .nav-item.active {
   @apply text-primary;
-  background-color: rgba(var(--overlay-rgb), 0.3);
 }
 
 .nav-item:not(.active):hover {
-  background-color: rgba(var(--overlay-rgb), 0.2);
   @apply text-text-primary;
 }
 
@@ -130,4 +129,22 @@ input[type="range"]::-moz-range-thumb {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(var(--color-primary), 0.5);
+}
+
+/* Hide scrollbars but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Improve touch scrolling */
+.touch-pan-x {
+  touch-action: pan-x;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow-scrolling: touch;
 } 

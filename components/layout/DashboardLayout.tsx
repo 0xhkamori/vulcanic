@@ -67,10 +67,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) =>
   }, [isNavigating]);
   
   return (
-    <div className="min-h-screen flex flex-col bg-background pb-20">
+    <div className="min-h-screen flex flex-col bg-background pb-16">
       {title && (
         <header className="sticky top-0 z-40 blur-backdrop py-4 shadow-sm">
-          <div className="max-w-screen-lg mx-auto px-4">
+          <div className="w-full mx-auto px-4">
             <h1 className="text-2xl font-mono font-bold text-text-primary">{title}</h1>
           </div>
         </header>
@@ -86,7 +86,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) =>
           ease: "easeInOut"
         }}
       >
-        <div className="max-w-screen-lg mx-auto px-4 py-4 w-full">
+        <div className="w-full mx-auto px-4 py-4">
           {/* Display grade update notifications */}
           {!isNavigating && <GradeUpdates />}
           {!isNavigating && children}
