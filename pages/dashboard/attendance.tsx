@@ -260,17 +260,22 @@ function Attendance() {
   
   // Get icon based on attendance type
   const getAttendanceIcon = (presenceTypeId: number) => {
-    switch (presenceTypeId) {
-      case 0: // Present
-        return <CheckCircle size={20} weight="fill" className="text-green-500" />;
-      case 1: // Absent
-        return <XCircle size={20} weight="fill" className="text-red-500" />;
-      case 2: // Late
-        return <Clock size={20} weight="fill" className="text-orange-500" />;
-      case 3: // Excused
-        return <CheckCircle size={20} weight="fill" className="text-blue-500" />;
-      default:
-        return <XCircle size={20} weight="fill" className="text-text-secondary" />;
+    try {
+      switch (presenceTypeId) {
+        case 0: // Present
+          return <CheckCircle size={20} weight="fill" className="text-green-500" />;
+        case 1: // Absent
+          return <XCircle size={20} weight="fill" className="text-red-500" />;
+        case 2: // Late
+          return <Clock size={20} weight="fill" className="text-orange-500" />;
+        case 3: // Excused
+          return <CheckCircle size={20} weight="fill" className="text-blue-500" />;
+        default:
+          return <MinusCircle size={20} weight="fill" className="text-text-secondary" />;
+      }
+    } catch (error) {
+      console.error('Error in getAttendanceIcon:', error);
+      return <Warning size={20} weight="fill" className="text-orange-500" />;
     }
   };
   
@@ -279,12 +284,30 @@ function Attendance() {
 
   // Handle attendance card click
   const handleAttendanceClick = (record: any) => {
-    setSelectedAttendance(record);
-    setIsModalOpen(true);
+    try {
+      // Create a safer copy of the record to avoid reference issues
+      const safeRecord = JSON.parse(JSON.stringify(record));
+      setSelectedAttendance(safeRecord);
+      setIsModalOpen(true);
+    } catch (err) {
+      console.error('Error handling attendance click:', err);
+      // Show a fallback modal with error message instead of crashing
+      setSelectedAttendance({
+        Subject: { Name: 'Error Loading Data' },
+        Date: new Date().toISOString().split('T')[0],
+        TimeStart: 'N/A',
+        TimeEnd: 'N/A'
+      });
+      setIsModalOpen(true);
+    }
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
+    // Small delay to avoid issues with immediately unmounting selected data
+    setTimeout(() => {
+      setSelectedAttendance(null);
+    }, 300);
   };
 
   return (
@@ -466,12 +489,12 @@ function Attendance() {
       )}
       
       {/* Attendance Detail Modal */}
-      {selectedAttendance && (
-        <DetailModal
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          title="Attendance Details"
-        >
+      <DetailModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title="Attendance Details"
+      >
+        {selectedAttendance ? (
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="flex-shrink-0">
@@ -480,8 +503,8 @@ function Attendance() {
               <div>
                 <h3 className="font-bold text-lg">
                   {selectedAttendance.Subject?.Name || 
-                   typeof selectedAttendance.Subject === 'string' ? selectedAttendance.Subject : 
-                   selectedAttendance.Lesson?.Subject?.Name || 'Lesson'}
+                   (typeof selectedAttendance.Subject === 'string' ? selectedAttendance.Subject : 
+                   selectedAttendance.Lesson?.Subject?.Name || 'Lesson')}
                 </h3>
                 <p className={`${formatAttendance(selectedAttendance).color} font-medium`}>
                   {formatAttendance(selectedAttendance).status}
@@ -517,9 +540,9 @@ function Attendance() {
                   <span className="font-medium">Teacher:</span>
                   <span>
                     {selectedAttendance.Teacher?.DisplayName || 
-                     typeof selectedAttendance.Teacher === 'string' ? selectedAttendance.Teacher : 
+                     (typeof selectedAttendance.Teacher === 'string' ? selectedAttendance.Teacher : 
                      selectedAttendance.Lesson?.Teacher?.DisplayName || 
-                     selectedAttendance.TeacherPrimary?.DisplayName || 'N/A'}
+                     selectedAttendance.TeacherPrimary?.DisplayName || 'N/A')}
                   </span>
                 </p>
               </div>
@@ -549,8 +572,12 @@ function Attendance() {
                           (selectedAttendance.Lesson?.Id) || 'N/A'}
             </div>
           </div>
-        </DetailModal>
-      )}
+        ) : (
+          <div className="p-4 text-center text-text-secondary">
+            Loading attendance details...
+          </div>
+        )}
+      </DetailModal>
     </DashboardLayout>
   );
 }

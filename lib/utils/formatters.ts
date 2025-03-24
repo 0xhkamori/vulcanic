@@ -177,54 +177,59 @@ export const formatAttendance = (attendance: any): { status: string, color: stri
     return { status: 'N/A', color: 'text-text-secondary' };
   }
   
-  // Determine attendance type from different data formats
-  let presenceTypeId: number = -1;
-  
-  // Old format: attendance.PresenceType.Id
-  if (attendance.PresenceType) {
-    // If PresenceType is an object with Id
-    if (typeof attendance.PresenceType === 'object' && attendance.PresenceType !== null && 
-        typeof attendance.PresenceType.Id === 'number') {
-      presenceTypeId = attendance.PresenceType.Id;
-      
-      // Non-standard Vulcan API codes
-      if (presenceTypeId > 1000) {
-        // Mapping specific codes 
-        if (presenceTypeId === 1228) return { status: 'Present', color: 'text-green-500' }; // Was absence
-        if (presenceTypeId === 1229) return { status: 'Absent', color: 'text-red-500' }; // Was presence
-        if (presenceTypeId === 1231) return { status: 'Present', color: 'text-green-500' }; // Was late
+  try {
+    // Determine attendance type from different data formats
+    let presenceTypeId: number = -1;
+    
+    // Old format: attendance.PresenceType.Id
+    if (attendance.PresenceType) {
+      // If PresenceType is an object with Id
+      if (typeof attendance.PresenceType === 'object' && attendance.PresenceType !== null && 
+          typeof attendance.PresenceType.Id === 'number') {
+        presenceTypeId = attendance.PresenceType.Id;
+        
+        // Non-standard Vulcan API codes
+        if (presenceTypeId > 1000) {
+          // Mapping specific codes 
+          if (presenceTypeId === 1228) return { status: 'Present', color: 'text-green-500' }; // Was absence
+          if (presenceTypeId === 1229) return { status: 'Absent', color: 'text-red-500' }; // Was presence
+          if (presenceTypeId === 1231) return { status: 'Present', color: 'text-green-500' }; // Was late
+        }
+      } 
+      // If PresenceType is a number
+      else if (typeof attendance.PresenceType === 'number') {
+        presenceTypeId = attendance.PresenceType;
       }
     } 
-    // If PresenceType is a number
-    else if (typeof attendance.PresenceType === 'number') {
-      presenceTypeId = attendance.PresenceType;
+    // New format: attendance.presenceTypeId
+    else if (typeof attendance.presenceTypeId === 'number') {
+      presenceTypeId = attendance.presenceTypeId;
     }
-  } 
-  // New format: attendance.presenceTypeId
-  else if (typeof attendance.presenceTypeId === 'number') {
-    presenceTypeId = attendance.presenceTypeId;
-  }
-  
-  // String format: attendance.presenceType
-  else if (attendance.presenceType) {
-    if (attendance.presenceType === 'present') presenceTypeId = 0;
-    else if (attendance.presenceType === 'absent') presenceTypeId = 1;
-    else if (attendance.presenceType === 'late') presenceTypeId = 2;
-    else if (attendance.presenceType === 'excused') presenceTypeId = 3;
-  }
-  
-  // Map presenceTypeId to status and color
-  switch (presenceTypeId) {
-    case 0:
-      return { status: 'Present', color: 'text-green-500' };
-    case 1:
-      return { status: 'Absent', color: 'text-red-500' };
-    case 2:
-      return { status: 'Late', color: 'text-orange-500' };
-    case 3:
-      return { status: 'Excused', color: 'text-blue-500' };
-    default:
-      return { status: 'Unknown', color: 'text-text-secondary' };
+    
+    // String format: attendance.presenceType
+    else if (attendance.presenceType) {
+      if (attendance.presenceType === 'present') presenceTypeId = 0;
+      else if (attendance.presenceType === 'absent') presenceTypeId = 1;
+      else if (attendance.presenceType === 'late') presenceTypeId = 2;
+      else if (attendance.presenceType === 'excused') presenceTypeId = 3;
+    }
+    
+    // Map presenceTypeId to status and color
+    switch (presenceTypeId) {
+      case 0:
+        return { status: 'Present', color: 'text-green-500' };
+      case 1:
+        return { status: 'Absent', color: 'text-red-500' };
+      case 2:
+        return { status: 'Late', color: 'text-orange-500' };
+      case 3:
+        return { status: 'Excused', color: 'text-blue-500' };
+      default:
+        return { status: 'Unknown', color: 'text-text-secondary' };
+    }
+  } catch (error) {
+    console.error('Error formatting attendance:', error);
+    return { status: 'Error', color: 'text-red-500' };
   }
 };
 
