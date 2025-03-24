@@ -18,6 +18,7 @@ import {
 import Link from 'next/link';
 import Loading from '@/components/ui/Loading';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
+import DetailModal from '@/components/ui/DetailModal';
 import withAuth from '@/lib/utils/withAuth';
 import { getUserData } from '@/lib/utils/auth-utils';
 import GradeUpdates from '@/components/ui/GradeUpdates';
@@ -29,6 +30,8 @@ function Dashboard() {
   const [todaysLessons, setTodaysLessons] = useState<any[]>([]);
   const [greeting, setGreeting] = useState('Good day');
   const [storageStatus, setStorageStatus] = useState<{available: boolean, error?: string}>({ available: false });
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Check localStorage availability
   useEffect(() => {
@@ -65,6 +68,16 @@ function Dashboard() {
       });
     }
   }, []);
+
+  // Handle lesson click
+  const handleLessonClick = (lesson: any) => {
+    setSelectedLesson(lesson);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
 
   const isLoading = lessonsLoading || substitutionsLoading;
   const error = lessonsError || substitutionsError;
@@ -463,8 +476,9 @@ function Dashboard() {
               return (
                 <Card 
                   key={index} 
-                  className={`p-4 ${lesson.isCurrentLesson ? 'border-2 border-accent' : ''} ${isSubstitution ? 'border-l-4 border-warning' : ''}`}
-                  withHover={false}
+                  className={`p-4 ${lesson.isCurrentLesson ? 'border-2 border-accent' : ''} ${isSubstitution ? 'border-l-4 border-warning' : ''} cursor-pointer hover:shadow-md transition-shadow`}
+                  withHover={true}
+                  onClick={() => handleLessonClick(lesson)}
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -513,6 +527,129 @@ function Dashboard() {
           <Card className="p-6 text-center" withHover={false}>
             <p className="text-text-secondary">No lessons for today</p>
           </Card>
+        )}
+        
+        {/* Lesson Detail Modal */}
+        {selectedLesson && (
+          <DetailModal 
+            isOpen={isModalOpen}
+            onClose={closeModal}
+            title={selectedLesson.Subject?.Name || selectedLesson.Subject || "Lesson Details"}
+          >
+            <div className="space-y-4">
+              <div className="bg-surface p-4 rounded-lg">
+                <h4 className="font-medium text-primary mb-2">Schedule Information</h4>
+                <div className="space-y-2 text-text-secondary">
+                  <p className="flex justify-between">
+                    <span className="font-medium">Time:</span>
+                    <span>
+                      {selectedLesson.TimeSlot?.Display || 
+                       (selectedLesson.TimeStart && selectedLesson.TimeEnd ? 
+                        `${formatTime(selectedLesson.TimeStart)} - ${formatTime(selectedLesson.TimeEnd)}` : 
+                        (selectedLesson.TimeSlot ? 
+                          `${selectedLesson.TimeSlot.Start} - ${selectedLesson.TimeSlot.End}` : 
+                          'N/A'))}
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="font-medium">Room:</span>
+                    <span>
+                      {selectedLesson.Room?.Code ? 
+                        selectedLesson.Room.Code : 
+                        (typeof selectedLesson.Room === 'string' ? 
+                          selectedLesson.Room : 
+                          selectedLesson.Room?.Name || 'N/A')}
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="font-medium">Position:</span>
+                    <span>
+                      {selectedLesson.TimeSlot?.Position || selectedLesson.Position || 'N/A'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-surface p-4 rounded-lg">
+                <h4 className="font-medium text-primary mb-2">Teacher Information</h4>
+                <div className="space-y-2 text-text-secondary">
+                  <p className="flex justify-between">
+                    <span className="font-medium">Name:</span>
+                    <span>
+                      {selectedLesson.TeacherPrimary?.DisplayName || 
+                       (typeof selectedLesson.Teacher === 'string' ? 
+                         selectedLesson.Teacher : 
+                         selectedLesson.Teacher?.DisplayName || 'N/A')}
+                    </span>
+                  </p>
+                  {selectedLesson.Teacher?.Email && (
+                    <p className="flex justify-between">
+                      <span className="font-medium">Email:</span>
+                      <span>{selectedLesson.Teacher.Email}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {selectedLesson.Topic && (
+                <div className="bg-surface p-4 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">Lesson Topic</h4>
+                  <p className="text-text-secondary">
+                    {typeof selectedLesson.Topic === 'string' ? 
+                     selectedLesson.Topic : 
+                     JSON.stringify(selectedLesson.Topic)}
+                  </p>
+                </div>
+              )}
+              
+              {selectedLesson.isSubstitution && (
+                <div className="bg-surface p-4 rounded-lg border-l-4 border-warning">
+                  <h4 className="font-medium text-warning mb-2">Substitution Information</h4>
+                  <div className="space-y-2 text-text-secondary">
+                    <p className="flex justify-between">
+                      <span className="font-medium">Reason:</span>
+                      <span>{selectedLesson.substitutionReason || 'N/A'}</span>
+                    </p>
+                    {selectedLesson.originalSubject && (
+                      <p className="flex justify-between">
+                        <span className="font-medium">Original Subject:</span>
+                        <span>
+                          {typeof selectedLesson.originalSubject === 'string' ? 
+                           selectedLesson.originalSubject : 
+                           selectedLesson.originalSubject.Name || 'Unknown'}
+                        </span>
+                      </p>
+                    )}
+                    {selectedLesson.originalTeacher && (
+                      <p className="flex justify-between">
+                        <span className="font-medium">Original Teacher:</span>
+                        <span>
+                          {typeof selectedLesson.originalTeacher === 'string' ? 
+                           selectedLesson.originalTeacher : 
+                           selectedLesson.originalTeacher.DisplayName || 'Unknown'}
+                        </span>
+                      </p>
+                    )}
+                    {selectedLesson.originalRoom && (
+                      <p className="flex justify-between">
+                        <span className="font-medium">Original Room:</span>
+                        <span>
+                          {typeof selectedLesson.originalRoom === 'string' ? 
+                           selectedLesson.originalRoom : 
+                           selectedLesson.originalRoom.Name || selectedLesson.originalRoom.Code || 'Unknown'}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Show additional data if available */}
+              <div className="text-xs text-text-tertiary mt-4">
+                <p>Lesson ID: {selectedLesson.Id || selectedLesson.ScheduleId || 'N/A'}</p>
+              </div>
+            </div>
+          </DetailModal>
         )}
       </>
     );
